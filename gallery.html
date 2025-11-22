@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GeoPhoto — Gallery</title>
+</head>
+<body>
+  <h2>Gallery</h2>
+  <p><a href="/">Capture new</a> • <a href="/export_csv">Export CSV</a></p>
+  <div id="items">
+    {% for it in items %}
+      <div style="margin-bottom:20px;">
+        <img src="{{ it.url }}" style="max-width:320px;display:block" />
+        <div>SHA: {{ it.sha }}</div>
+        <div>Timestamp: {{ it.timestamp }}</div>
+        <div>Lat: {{ it.lat }} Lon: {{ it.lon }}</div>
+        <div>Notes: {{ it.notes }}</div>
+        <div><a href="{{ it.url }}" download>Download</a></div>
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

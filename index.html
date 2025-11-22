@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GeoPhoto — Capture</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 12px; }
+    video { width: 100%; max-width: 480px; }
+    img { width: 100%; max-width: 480px; display:block; margin-top: 8px }
+    .controls { margin-top: 8px }
+  </style>
+</head>
+<body>
+  <h2>GeoPhoto — Capture</h2>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none"></canvas>
+  <img id="preview" alt="preview" />
+
+  <div class="controls">
+    <button id="capture">Capture & Upload</button>
+    <input id="notes" placeholder="Notes / tags" />
+  </div>
+
+  <div id="status"></div>
+  <p><a href="/gallery">View gallery</a></p>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const preview = document.getElementById('preview');
+    const status = document.getElementById('status');
+    const notes = document.getElementById('notes');
+
+    async function startCamera(){
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        video.srcObject = stream;
+      } catch (e) {
+        status.innerText = 'Camera permission denied or not available.';
+      }
+    }
+    startCamera();
+
+    function getLocation(){
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve({lat:null, lon:null});
+        navigator.geolocation.getCurrentPosition(pos => {
+          resolve({lat: pos.coords.latitude, lon: pos.coords.longitude});
+        }, err => {
+          resolve({lat:null, lon:null});
+        }, { enableHighAccuracy: true, timeout: 7000 });
+      });
+    }
+
+    document.getElementById('capture').addEventListener('click', async ()=>{
+      status.innerText = 'Capturing...';
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+      preview.src = URL.createObjectURL(blob);
+
+      const loc = await getLocation();
+      const ts = new Date().toISOString();
+      const form = new FormData();
+      form.append('photo', blob, 'capture.jpg');
+      form.append('lat', loc.lat);
+      form.append('lon', loc.lon);
+      form.append('timestamp', ts);
+      form.append('notes', notes.value || '');
+
+      status.innerText = 'Uploading...';
+      try{
+        const res = await fetch('/upload', { method: 'POST', body: form });
+        const j = await res.json();
+        if (j.status === 'ok'){
+          status.innerHTML = 'Uploaded — <a href="' + j.url + '" target="_blank">View</a>';
+        } else {
+          status.innerText = 'Upload failed: ' + JSON.stringify(j);
+      } catch (e){
+        status.innerText = 'Upload error: ' + e.message;
+      }
+    });
+  </script>
+</body>
+</html>
